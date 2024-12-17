@@ -1,3 +1,4 @@
+#include <circle.h>
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
@@ -6,8 +7,8 @@
 #include <SDL_image.h>
 #include <SDL_ttf.h>
 
-#define SCREEN_WIDTH 640
-#define SCREEN_HEIGHT 480
+constexpr auto SCREEN_WIDTH = 640;
+constexpr auto SCREEN_HEIGHT = 480;
 
 int main(int argc, char* argv[]) {
 	// program start
@@ -56,53 +57,12 @@ int main(int argc, char* argv[]) {
 		std::cout << "SDL_CreateRenderer Success!" << std::endl;
 	}
 
-	// SDL2 texture creation
-	SDL_Surface* surface = IMG_Load("assets/hello.png");
-	if (surface == nullptr || !surface) {
-		std::cerr << "IMG_Load Error: " << IMG_GetError() << std::endl;
-		return 1;
+	// make 100 circles and move them around
+	Circle* circles[100];
+	for (int i = 0; i < 100; ++i) {
+		circles[i] = new Circle(rand() % SCREEN_WIDTH, rand() % SCREEN_HEIGHT, 10.0f, { (Uint8)(rand() % 256), (Uint8)(rand() % 256), (Uint8)(rand() % 256), 255 }, renderer);
 	}
-	else {
-		std::cout << "IMG_Load Success!" << std::endl;
-	}
-	SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
-	if (texture == nullptr || !texture) {
-		std::cerr << "SDL_CreateTextureFromSurface Error: " << SDL_GetError() << std::endl;
-		return 1;
-	}
-	else {
-		std::cout << "SDL_CreateTextureFromSurface Success!" << std::endl;
-	}
-	SDL_FreeSurface(surface);
-
-	// SDL2 font creation
-	TTF_Font* font = TTF_OpenFont("assets/Roboto-Regular.ttf", 24);
-	if (font == nullptr || !font) {
-		std::cerr << "TTF_OpenFont Error: " << TTF_GetError() << std::endl;
-		return 1;
-	}
-	else {
-		std::cout << "TTF_OpenFont Success!" << std::endl;
-	}
-	SDL_Color color = { 255, 255, 255 };
-	SDL_Surface* textSurface = TTF_RenderText_Solid(font, "Hello, World!", color);
-	if (textSurface == nullptr || !textSurface) {
-		std::cerr << "TTF_RenderText_Solid Error: " << TTF_GetError() << std::endl;
-		return 1;
-	}
-	else {
-		std::cout << "TTF_RenderText_Solid Success!" << std::endl;
-	}
-	SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-	if (textTexture == nullptr || !textTexture) {
-		std::cerr << "SDL_CreateTextureFromSurface Error: " << SDL_GetError() << std::endl;
-		return 1;
-	}
-	else {
-		std::cout << "SDL_CreateTextureFromSurface Success!" << std::endl;
-	}
-	SDL_FreeSurface(textSurface);
-
+	
 	// SDL2 event loop
 	SDL_Event event;
 	bool running = true;
@@ -114,18 +74,57 @@ int main(int argc, char* argv[]) {
 		}
 
 		// SDL2 render
+
+		// clear the screen
+		SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 		SDL_RenderClear(renderer);
-		SDL_RenderCopy(renderer, texture, nullptr, nullptr);
-		SDL_Rect textRect = { 320, 240, 0, 0 };
-		SDL_QueryTexture(textTexture, nullptr, nullptr, &textRect.w, &textRect.h);
-		SDL_RenderCopy(renderer, textTexture, nullptr, &textRect);
+
+		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+
+		// render location
+		for (int i = 0; i < 100; ++i) {
+			circles[i]->draw();
+			circles[i]->setAcceleration({ 0.0f, 9.8f });
+			circles[i]->setVelocity(circles[i]->getVelocity() + circles[i]->getAcceleration() * 0.01f);
+			circles[i]->move(circles[i]->getVelocity().x, circles[i]->getVelocity().y);
+			circles[i]->setPos(circles[i]->getPos().x, circles[i]->getPos().y);
+			circles[i]->setRadius(10.0f);
+			circles[i]->setColor({ (Uint8)(rand() % 256), (Uint8)(rand() % 256), (Uint8)(rand() % 256), 255 });
+			circles[i]->update(0.01f);
+			if (circles[i]->getPos().x < 0) {
+				circles[i]->setPos(SCREEN_WIDTH, circles[i]->getPos().y);
+			}
+			if (circles[i]->getPos().x > SCREEN_WIDTH) {
+				circles[i]->setPos(0, circles[i]->getPos().y);
+			}
+			if (circles[i]->getPos().y < 0) {
+				circles[i]->setPos(circles[i]->getPos().x, SCREEN_HEIGHT);
+			}
+			if (circles[i]->getPos().y > SCREEN_HEIGHT) {
+				circles[i]->setPos(circles[i]->getPos().x, 0);
+			}
+			if (circles[i]->getVelocity().x > 30.0f) {
+				circles[i]->setVelocity(10.0f, circles[i]->getVelocity().y);
+			}
+			if (circles[i]->getVelocity().y > 30.0f) {
+				circles[i]->setVelocity(circles[i]->getVelocity().x, 10.0f);
+			}
+			if (circles[i]->getAcceleration().x > 100.0f) {
+				circles[i]->setAcceleration(10.0f, circles[i]->getAcceleration().y);
+			}
+			if (circles[i]->getAcceleration().y > 100.0f) {
+				circles[i]->setAcceleration(circles[i]->getAcceleration().x, 10.0f);
+			}
+		}
+
+		// present the screen
 		SDL_RenderPresent(renderer);
 	}
 
 	// SDL2 cleanup
-	SDL_DestroyTexture(textTexture);
-	SDL_DestroyTexture(texture);
-	TTF_CloseFont(font);
+	for (int i = 0; i < 100; ++i) {
+		delete circles[i];
+	}
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	TTF_Quit();
