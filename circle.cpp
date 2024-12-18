@@ -15,10 +15,10 @@ Circle::~Circle() {
 
 // Helper function to create the circle texture
 void Circle::createCircleTexture() {
-	// Clean up the old texture if it exists
-	if (circleTexture) {
-		SDL_DestroyTexture(circleTexture);
-	}
+    // Clean up the old texture if it exists
+    if (circleTexture) {
+        SDL_DestroyTexture(circleTexture);
+    }
 
     // Create an SDL_Surface with a size of 2 * radius (square)
     SDL_Surface* surface = SDL_CreateRGBSurface(0, 2 * radius, 2 * radius, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);

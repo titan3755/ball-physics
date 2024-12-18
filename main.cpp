@@ -2,13 +2,49 @@
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
+#include <vector>
 #include <SDL.h>
 #undef main // SDL defines main, so we need to undefine it
 #include <SDL_image.h>
 #include <SDL_ttf.h>
 
-constexpr auto SCREEN_WIDTH = 640;
-constexpr auto SCREEN_HEIGHT = 480;
+constexpr auto SCREEN_WIDTH = 1280;
+constexpr auto SCREEN_HEIGHT = 720;
+
+bool checkIfMouseIsWithinWindowAndLeftMouseButtonIsPressed(SDL_Window* window) {
+	int x, y;
+	Uint32 mouseState = SDL_GetMouseState(&x, &y);
+	Uint32 windowFlags = SDL_GetWindowFlags(window);
+	return (mouseState & SDL_BUTTON(SDL_BUTTON_LEFT)) && (windowFlags & SDL_WINDOW_MOUSE_FOCUS) && (windowFlags & SDL_WINDOW_INPUT_FOCUS);
+}
+
+static void setWindowTitleAccordingToFramerateAndTimeElapsed(SDL_Window* window) {
+	static int frameCount = 0;
+	static Uint32 lastFrameTime = 0;
+	static char title[100];
+
+	// Increment frame count every loop
+	frameCount++;
+
+	Uint32 currentTime = SDL_GetTicks();
+	if (currentTime - lastFrameTime >= 1000) {  // Every second
+		// Calculate FPS by dividing frames by elapsed time in seconds
+		int fps = frameCount;  // FPS = frames per second
+		int timeElapsedInSeconds = (currentTime - lastFrameTime) / 1000;
+
+		// Set window title with the calculated FPS
+		int succ = sprintf_s(title, "Ball_Physics | FPS: %d", fps);
+		if (succ < 0) {
+			std::cerr << "sprintf_s Error: " << succ << std::endl;
+		}
+		SDL_SetWindowTitle(window, title);
+
+		// Reset for the next frame
+		lastFrameTime = currentTime;
+		frameCount = 0;
+	}
+}
+
 
 int main(int argc, char* argv[]) {
 	// program start
@@ -48,7 +84,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	// SDL2 renderer creation
-	SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+	SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 	if (renderer == nullptr || !renderer) {
 		std::cerr << "SDL_CreateRenderer Error: " << SDL_GetError() << std::endl;
 		return 1;
@@ -57,12 +93,19 @@ int main(int argc, char* argv[]) {
 		std::cout << "SDL_CreateRenderer Success!" << std::endl;
 	}
 
+	std::vector<Circle*> circlesVec;
+
 	// make 100 circles and move them around
-	Circle* circles[100];
-	for (int i = 0; i < 100; ++i) {
-		circles[i] = new Circle(rand() % SCREEN_WIDTH, rand() % SCREEN_HEIGHT, 10.0f, { (Uint8)(rand() % 256), (Uint8)(rand() % 256), (Uint8)(rand() % 256), 255 }, renderer);
-	}
-	
+	//Circle* circles[1000];
+	//for (int i = 0; i < 1000; ++i) {
+	//	circles[i] = new Circle(rand() % SCREEN_WIDTH, rand() % SCREEN_HEIGHT, 10.0f, { (Uint8)(rand() % 256), (Uint8)(rand() % 256), (Uint8)(rand() % 256), 255 }, renderer);
+	//}
+
+	//// vector of circles
+	//for (int i = 0; i < 1000; ++i) {
+	//	circlesVec.push_back(new Circle(rand() % SCREEN_WIDTH, rand() % SCREEN_HEIGHT, 10.0f, { (Uint8)(rand() % 256), (Uint8)(rand() % 256), (Uint8)(rand() % 256), 255 }, renderer));
+	//}
+
 	// SDL2 event loop
 	SDL_Event event;
 	bool running = true;
@@ -73,7 +116,13 @@ int main(int argc, char* argv[]) {
 			}
 		}
 
+		// set window title according to framerate and time elapsed
+		setWindowTitleAccordingToFramerateAndTimeElapsed(window);
+
 		// SDL2 render
+		if (checkIfMouseIsWithinWindowAndLeftMouseButtonIsPressed(window)) {
+			circlesVec.push_back(new Circle(rand() % SCREEN_WIDTH, rand() % SCREEN_HEIGHT, 10.0f, { (Uint8)(rand() % 256), (Uint8)(rand() % 256), (Uint8)(rand() % 256), 255 }, renderer));
+		}
 
 		// clear the screen
 		SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
@@ -81,50 +130,21 @@ int main(int argc, char* argv[]) {
 
 		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 
-		// render location
-		for (int i = 0; i < 100; ++i) {
-			circles[i]->draw();
-			circles[i]->setAcceleration({ 0.0f, 9.8f });
-			circles[i]->setVelocity(circles[i]->getVelocity() + circles[i]->getAcceleration() * 0.01f);
-			circles[i]->move(circles[i]->getVelocity().x, circles[i]->getVelocity().y);
-			circles[i]->setPos(circles[i]->getPos().x, circles[i]->getPos().y);
-			circles[i]->setRadius(10.0f);
-			circles[i]->setColor({ (Uint8)(rand() % 256), (Uint8)(rand() % 256), (Uint8)(rand() % 256), 255 });
-			circles[i]->update(0.01f);
-			if (circles[i]->getPos().x < 0) {
-				circles[i]->setPos(SCREEN_WIDTH, circles[i]->getPos().y);
-			}
-			if (circles[i]->getPos().x > SCREEN_WIDTH) {
-				circles[i]->setPos(0, circles[i]->getPos().y);
-			}
-			if (circles[i]->getPos().y < 0) {
-				circles[i]->setPos(circles[i]->getPos().x, SCREEN_HEIGHT);
-			}
-			if (circles[i]->getPos().y > SCREEN_HEIGHT) {
-				circles[i]->setPos(circles[i]->getPos().x, 0);
-			}
-			if (circles[i]->getVelocity().x > 30.0f) {
-				circles[i]->setVelocity(10.0f, circles[i]->getVelocity().y);
-			}
-			if (circles[i]->getVelocity().y > 30.0f) {
-				circles[i]->setVelocity(circles[i]->getVelocity().x, 10.0f);
-			}
-			if (circles[i]->getAcceleration().x > 100.0f) {
-				circles[i]->setAcceleration(10.0f, circles[i]->getAcceleration().y);
-			}
-			if (circles[i]->getAcceleration().y > 100.0f) {
-				circles[i]->setAcceleration(circles[i]->getAcceleration().x, 10.0f);
-			}
+		 /*render location*/
+		for (int i = 0; i < circlesVec.size(); ++i) {
+			circlesVec[i]->draw();
 		}
 
 		// present the screen
 		SDL_RenderPresent(renderer);
+
+		// errors
+		if (SDL_GetError() != nullptr && SDL_GetError()[0] != '\0') {
+			std::cerr << "SDL Error: " << SDL_GetError() << std::endl;
+		}
 	}
 
 	// SDL2 cleanup
-	for (int i = 0; i < 100; ++i) {
-		delete circles[i];
-	}
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	TTF_Quit();
